@@ -30,6 +30,7 @@ import com.jpexs.helpers.ReflectionTools;
 import com.jpexs.helpers.XmlPrettyFormat;
 import com.jpexs.helpers.utf8.Utf8OutputStreamWriter;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import java.io.Writer;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +48,13 @@ import java.util.logging.Logger;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.Source;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+
+import java.io.OutputStreamWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
 
 /**
  *
@@ -123,7 +132,7 @@ public class SwfXmlExporter {
 
     private boolean isPrimitive(Class cls) {
         return cls != null && !cls.equals(Void.class) && (cls.isPrimitive()
-                || cls == Short.class
+                || cls == Short.class   
                 || cls == Integer.class
                 || cls == Long.class
                 || cls == Float.class
@@ -206,6 +215,12 @@ public class SwfXmlExporter {
             }
             
             writer.writeAttribute("type", clazz.getSimpleName());
+            
+            if (obj instanceof Tag) {
+                if (((Tag) obj).forceWriteAsLong) {
+                    writer.writeAttribute("forceWriteAsLong", "true");
+                }
+            }
 
             if (obj instanceof UnknownTag) {
                 writer.writeAttribute("tagId", String.valueOf(((Tag) obj).getId()));

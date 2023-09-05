@@ -1430,12 +1430,14 @@ public class SWFOutputStream extends OutputStream {
                 writeUB(1, scr.stateFillStyle0 ? 1 : 0);
                 writeUB(1, scr.stateMoveTo ? 1 : 0);
                 if (scr.stateMoveTo) {
-                    int moveBits = getNeededBitsS(scr.moveDeltaX, scr.moveDeltaY);
-                    if (Configuration._debugCopy.get()) {
-                        moveBits = Math.max(moveBits, scr.moveBits);
-                    }
+                    if (scr.moveBits == 0) {
+                        int moveBits = getNeededBitsS(scr.moveDeltaX, scr.moveDeltaY);
+                        if (Configuration._debugCopy.get()) {
+                            moveBits = Math.max(moveBits, scr.moveBits);
+                        }
 
-                    scr.moveBits = moveBits;
+                        scr.moveBits = moveBits;
+                    }
                     writeUB(5, scr.moveBits);
                     writeSB(scr.moveBits, scr.moveDeltaX);
                     writeSB(scr.moveBits, scr.moveDeltaY);
