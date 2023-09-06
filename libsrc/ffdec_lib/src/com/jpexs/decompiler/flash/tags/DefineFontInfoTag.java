@@ -88,7 +88,7 @@ public class DefineFontInfoTag extends FontInfoTag {
     @Override
     public final void readData(SWFInputStream sis, ByteArrayRange data, int level, boolean parallel, boolean skipUnusualTags, boolean lazy) throws IOException {
         fontID = sis.readUI16("fontId");
-        fontName = sis.readNetString("fontName");
+        fontName = sis.readNullTerminatedString("fontName");
         reserved = (int) sis.readUB(2, "reserved");
         fontFlagsSmallText = sis.readUB(1, "fontFlagsSmallText") == 1;
         fontFlagsShiftJIS = sis.readUB(1, "fontFlagsShiftJIS") == 1;
@@ -115,7 +115,7 @@ public class DefineFontInfoTag extends FontInfoTag {
     @Override
     public void getData(SWFOutputStream sos) throws IOException {
         sos.writeUI16(fontID);
-        sos.writeNetString(fontName);
+        sos.writeNullTerminatedString(fontName);
         sos.writeUB(2, reserved);
         sos.writeUB(1, fontFlagsSmallText ? 1 : 0);
         sos.writeUB(1, fontFlagsShiftJIS ? 1 : 0);

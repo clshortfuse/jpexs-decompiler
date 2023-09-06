@@ -528,6 +528,23 @@ public class SWFInputStream implements AutoCloseable {
         endDumpLevel();
         return ret;
     }
+    
+    /**
+     * Reads one netstring (length + string) value from the stream
+     *
+     * @param name
+     * @return String value
+     * @throws IOException
+     */
+    public String readNullTerminatedString(String name) throws IOException {
+        String ret = readNetString(name);
+        int len = ret.length();
+        if (len > 0 && ret.charAt(len -1) == 0) {
+            return ret.substring(0 , len -1);
+        }
+        
+        return ret;
+    }
 
     /**
      * Reads one UI32 (Unsigned 32bit integer) value from the stream

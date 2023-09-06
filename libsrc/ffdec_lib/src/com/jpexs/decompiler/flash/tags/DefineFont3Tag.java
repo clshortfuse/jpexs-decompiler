@@ -131,7 +131,7 @@ public class DefineFont3Tag extends FontTag {
         fontFlagsItalic = sis.readUB(1, "fontFlagsItalic") == 1;
         fontFlagsBold = sis.readUB(1, "fontFlagsBold") == 1;
         languageCode = sis.readLANGCODE("languageCode");
-        fontName = sis.readNetString("fontName");
+        fontName = sis.readNullTerminatedString("fontName");
         int numGlyphs = sis.readUI16("numGlyphs");
         long[] offsetTable = new long[numGlyphs];
         long pos = sis.getPos();
@@ -253,7 +253,7 @@ public class DefineFont3Tag extends FontTag {
         sos.writeUB(1, fontFlagsItalic ? 1 : 0);
         sos.writeUB(1, fontFlagsBold ? 1 : 0);
         sos.writeLANGCODE(languageCode);
-        sos.writeNetString(fontName);
+        sos.writeNullTerminatedString(fontName);
         sos.writeUI16(numGlyphs);
 
         for (long offset : offsetTable) {

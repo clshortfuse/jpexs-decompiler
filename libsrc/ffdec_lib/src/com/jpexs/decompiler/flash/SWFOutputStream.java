@@ -201,6 +201,19 @@ public class SWFOutputStream extends OutputStream {
         writeUI8(data.length);
         write(data);
     }   
+    
+    /**
+     * Writes netstring (length + string) value to the stream
+     *
+     * @param value String value
+     * @throws IOException
+     */
+    public void writeNullTerminatedString(String value) throws IOException {
+        byte[] data = value.getBytes(charset);
+        writeUI8(data.length + 1);
+        write(data);
+        write(0);
+    }
 
     /**
      * Writes UI32 (Unsigned 32bit integer) value to the stream
@@ -621,12 +634,14 @@ public class SWFOutputStream extends OutputStream {
     public void writeMatrix(MATRIX value) throws IOException {
         writeUB(1, value.hasScale ? 1 : 0);
         if (value.hasScale) {
-            int nBits = 0;
-            nBits = enlargeBitCountS(nBits, value.scaleX);
-            nBits = enlargeBitCountS(nBits, value.scaleY);
+            int nBits = value.nScaleBits;
+            if (nBits == 0) {
+                nBits = enlargeBitCountS(nBits, value.scaleX);
+                nBits = enlargeBitCountS(nBits, value.scaleY);
 
-            if (Configuration._debugCopy.get()) {
-                nBits = Math.max(nBits, value.nScaleBits);
+                if (Configuration._debugCopy.get()) {
+                    nBits = Math.max(nBits, value.nScaleBits);
+                }
             }
 
             writeUB(5, nBits);
