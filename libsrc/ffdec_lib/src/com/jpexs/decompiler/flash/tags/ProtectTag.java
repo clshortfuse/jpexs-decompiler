@@ -95,6 +95,10 @@ public class ProtectTag extends Tag implements PasswordTag {
      */
     @Override
     public void getData(SWFOutputStream sos) throws IOException {
+        boolean hasPassword = !"".equals(passwordHash);
+        if (!hasPassword && reserved == 0) {
+            return;
+        }
         sos.writeUI16(reserved);
         if (!"".equals(passwordHash)) {
             sos.writeString(passwordHash);
