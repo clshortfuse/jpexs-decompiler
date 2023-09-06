@@ -2779,7 +2779,7 @@ public class CommandLineArgumentParser {
             try (OutputStream fos = new BufferedOutputStream(new FileOutputStream(new File(args.pop())))) {
                 swf.saveTo(fos);
             }
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             logger.log(Level.SEVERE, null, ex);
         }
 

@@ -39,7 +39,6 @@ import com.jpexs.decompiler.flash.abc.types.traits.TraitSlotConst;
 import com.jpexs.decompiler.flash.abc.types.traits.Traits;
 import com.jpexs.decompiler.flash.amf.amf3.Amf3Value;
 import com.jpexs.decompiler.flash.tags.DefineSpriteTag;
-import com.jpexs.decompiler.flash.tags.FileAttributesTag;
 import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.TagTypeInfo;
 import com.jpexs.decompiler.flash.tags.UnknownTag;
@@ -114,9 +113,13 @@ import com.jpexs.helpers.HashArrayList;
 import com.jpexs.helpers.Helper;
 import com.jpexs.helpers.ReflectionTools;
 import com.jpexs.helpers.utf8.Utf8InputStreamReader;
+
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Array;
@@ -129,6 +132,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -150,7 +154,7 @@ public class SwfXmlImporter {
     private static final Map<String, Class> swfObjects;
 
     private static final Map<String, Class> swfObjectsParam;
-    
+
     static {
         Map<String, Class> tags = new HashMap<>();
         Map<Integer, TagTypeInfo> knownTags = Tag.getKnownClasses();
@@ -163,7 +167,7 @@ public class SwfXmlImporter {
         }
 
         swfTags = tags;
-        
+
         Map<String, Class> objects = new HashMap<>();
         Class[] knownObjects = new Class[]{ALPHABITMAPDATA.class, ALPHACOLORMAPDATA.class, ARGB.class, BITMAPDATA.class,
             BUTTONCONDACTION.class, BUTTONRECORD.class, CLIPACTIONRECORD.class, CLIPACTIONS.class, CLIPEVENTFLAGS.class,
@@ -185,7 +189,7 @@ public class SwfXmlImporter {
             ContourType.class, EdgeType.class, FONTINFO.class, FontType.class, GLYPHIDX.class,
             GlyphInfoType.class, GlyphType.class, KerningPairType.class, TEXGLYPH.class
         };
-        
+
         for (Class cls2 : knownObjects) {
             if (!ReflectionTools.canInstantiateDefaultConstructor(cls2)) {
                 System.err.println("Can't instantiate: " + cls2.getName());
@@ -194,7 +198,7 @@ public class SwfXmlImporter {
         }
 
         swfObjects = objects;
-        
+
         Map<String, Class> objectsParam = new HashMap<>();
         Class[] knownObjectsParam = new Class[]{ABC.class};
         for (Class cls2 : knownObjectsParam) {
@@ -206,12 +210,12 @@ public class SwfXmlImporter {
 
         swfObjectsParam = objectsParam;
     }
-    
+
     private boolean isList(Class cls) {
         return cls != null && (cls.isArray() || List.class.isAssignableFrom(cls));
     }
 
-    public void importSwf(SWF swf, InputStream in) throws IOException {
+    public void importSwf(SWF swf, InputStream in) throws IOException, XMLStreamException {
         XMLInputFactory xmlFactory = XMLInputFactory.newInstance();
         
         try {
@@ -291,21 +295,23 @@ public class SwfXmlImporter {
     }
 
     private void processElement(XMLStreamReader reader, Object obj, SWF swf, Tag tag, int xmlExportMajor) throws XMLStreamException {
-        // Check if element started and start if needed
-        if(!reader.isStartElement()) {
-            reader.nextTag();
-            reader.require(XMLStreamConstants.START_ELEMENT, null, null);
-        }
-        
+        reader.require(XMLStreamConstants.START_ELEMENT, null, null);
+
         Class cls = obj.getClass();
-        
+
+        String typeAttrValue = null;
         Map<String, String> attributes = new HashMap<>();
         for (int i = 0; i < reader.getAttributeCount(); i++) {
             String name = reader.getAttributeLocalName(i);
             String value = reader.getAttributeValue(i);
+            System.out.println("  " + name + ": " + value);
             attributes.put(name, value);
+            if (name.equals("type")) {
+                typeAttrValue = value;
+            }
         }
-        
+
+
         if ("SWF".equals(attributes.get("type")))
         {
             int xmlExportMinor = 0;
@@ -321,112 +327,132 @@ public class SwfXmlImporter {
                 throw new RuntimeException("The XML file was exported with newer XML format (major " + xmlExportMajor+", minor "+xmlExportMinor+"). Please download newer version of FFDec to correctly parse it.");
             }            
         }
-        
+
+        // Process attributes
         for (Map.Entry<String, String> entry : attributes.entrySet()) {
             String name = entry.getKey();
             String val = entry.getValue();
-            
-            if (name.equals("tagId") && "UnknownTag".equals(attributes.get("type"))) {
+
+            if (name.equals("tagId") && "UnknownTag".equals(typeAttrValue)) {
                 continue;
             }                       
             if (name.equals("charset") && "SWF".equals(attributes.get("type"))) {
                 ((SWF) obj).setCharset(val);
                 continue;
             }
-            
             //skip meta parameters starting with "_". expandable in the future...
             if ("SWF".equals(attributes.get("type")) && name.startsWith("_")) { 
                 continue;
             }            
             
             //backwards compatibility
-            if (name.equals("reserved1") && "FileAttributesTag".equals(attributes.get("type"))) {
+            if (name.equals("reserved1") && "FileAttributesTag".equals(typeAttrValue)) {
                 name = "reservedA";
-            }            
-            if (name.equals("reserved2") && "FileAttributesTag".equals(attributes.get("type"))) {
+            }
+            if (name.equals("reserved2") && "FileAttributesTag".equals(typeAttrValue)) {
                 name = "swfRelativeUrls";
             }
-            if (name.equals("reserved3") && "FileAttributesTag".equals(attributes.get("type"))) {
+            if (name.equals("reserved3") && "FileAttributesTag".equals(typeAttrValue)) {
                 name = "reservedB";
             }
-            
-            
+
             if (!name.equals("type")) {
                 try {
                     Field field = getField(cls, name);
+                    // Set internal object value
                     setFieldValue(field, obj, getAs(field.getType(), val, xmlExportMajor));
                 } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                     logger.log(Level.SEVERE, null, ex);
                 }
             }
         }
-        
-        // Check for child elements
+
+        // Consume any comment, text, or CDATA nodes
         reader.nextTag();
-        while(reader.isStartElement()) {
+
+        // Start iterating children
+        while (reader.isStartElement()) {
             // Child element open
             String name = reader.getLocalName();
             try {
                 Field field = getField(cls, name);
                 Class childCls = field.getType();
-                
-                if(isList(childCls)) {
+
+                if (isList(childCls)) {
+                    // Treat grandchildren as items in list
+                    // parent.child = [item,...]
                     List list = HashArrayList.class.isAssignableFrom(childCls) ? new HashArrayList() : new ArrayList();
                     Class reqType = childCls.isArray() ? childCls.getComponentType() : ReflectionTools.getFieldSubType(obj, field);
-                    
+
                     // Check for list item elements
-                    reader.nextTag();
+                    reader.nextTag(); // Consume whitespace
                     while(reader.isStartElement()) {
                         Object childObj = processObject(reader, reqType, swf, tag, xmlExportMajor);
                         list.add(childObj);
+
+                        // processObject will move to end of processed object
+                        reader.require(XMLStreamConstants.END_ELEMENT, null, null);
                         
-                        reader.nextTag();
+                        // We may either have text, the start
+                        // of a sibling node, or the end of the parent node.
+
+                        reader.nextTag(); // Consume whitespace
+
+                        // If a start node, then it's a sibling
+                        // If an end node, then list is done
                     }
-                    
+
+                    // We have exited and returned to the END_ELEMENT of the child
+
+
                     Object value = list;
-                    
-                    if(childCls.isArray()) {
+
+                    if (childCls.isArray()) {
                         value = Array.newInstance(childCls.getComponentType(), list.size());
                         for (int j = 0; j < list.size(); j++) {
                             Array.set(value, j, list.get(j));
                         }
                     }
-                    
+
+                    // Assign list of items to child
                     setFieldValue(field, obj, value);
-                }
-                else {
+
+                    // At end of child
+                    reader.require(XMLStreamConstants.END_ELEMENT, null, null);
+                } else {
+                    // Treat children as objects to assign to parent
                     Object childObj = processObject(reader, null, swf, tag, xmlExportMajor);
                     setFieldValue(field, obj, childObj);
+                    // Assert finished with process object
+                    reader.require(XMLStreamConstants.END_ELEMENT, null, null);
                 }
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException | NoSuchMethodException | InstantiationException | InvocationTargetException ex) {
                 logger.log(Level.SEVERE, "Error while getting val from class " + cls + " field: " + name, ex);
             }
-            
-            
-            reader.nextTag();
+            reader.nextTag(); // Consume whitespace
+            // May branch into sibling or finish
         }
-        
-        // Check if element ended and end if needed
-        if(reader.getEventType() != XMLStreamConstants.END_ELEMENT) {
-            reader.nextTag();
-            reader.require(XMLStreamConstants.END_ELEMENT, null, null);
-        }
+
+        // Assert at end of element
+        reader.require(XMLStreamConstants.END_ELEMENT, null, null);
+
     }
 
+    /**
+     * Expects to be at START_ELEMENT and will fully consume element.
+     * Will return reader at corresponding END_ELEMENT.
+     */
     private Object processObject(XMLStreamReader reader, Class requiredType, SWF swf, Tag tag, int xmlExportMajor) throws IllegalArgumentException, IllegalAccessException, NoSuchMethodException, InstantiationException, InvocationTargetException, XMLStreamException {
         // Check if element started and start if needed
-        if(!reader.isStartElement()) {
-            reader.nextTag();
-            reader.require(XMLStreamConstants.START_ELEMENT, null, null);
-        }
-        
+        reader.require(XMLStreamConstants.START_ELEMENT, null, null);
+
         Map<String, String> attributes = new HashMap<>();
         for (int i = 0; i < reader.getAttributeCount(); i++) {
             String name = reader.getAttributeLocalName(i);
             String value = reader.getAttributeValue(i);
             attributes.put(name, value);
         }
-        
+
         String type = attributes.get("type");
         String tagTypeIdStr = attributes.get("tagId");
         int tagTypeId = -1;
@@ -435,11 +461,11 @@ public class SwfXmlImporter {
         } catch (NumberFormatException nfe) {
             //ignore
         }
-        
+
         Object ret;
-        
+
         if ("String".equals(type)) {
-            ret = reader.getElementText();
+            ret = reader.getElementText(); // MOVES TO END
         } else if (type != null && !type.isEmpty()) {
             Object childObj = createObject(type, tagTypeId, swf, tag);
             if (childObj instanceof Tag) {
@@ -452,17 +478,13 @@ public class SwfXmlImporter {
             String isNullAttr = attributes.get("isNull");
             if (Boolean.parseBoolean(isNullAttr)) {
                 ret = null;
+                reader.nextTag(); // Move to END_ELEMENT
             } else {
-                ret = getAs(requiredType, reader.getElementText(), xmlExportMajor);
+                ret = getAs(requiredType, reader.getElementText(), xmlExportMajor); // Moves to END_ELEMENT
             }
         }
-        
-        // Check if element ended and end if needed
-        if(reader.getEventType() != XMLStreamConstants.END_ELEMENT) {
-            reader.nextTag();
-            reader.require(XMLStreamConstants.END_ELEMENT, null, null);
-        }
-        
+
+        reader.require(XMLStreamConstants.END_ELEMENT, null, null);
         return ret;
     }
 

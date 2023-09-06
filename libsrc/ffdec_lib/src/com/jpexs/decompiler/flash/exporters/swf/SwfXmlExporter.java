@@ -20,6 +20,7 @@ import com.jpexs.decompiler.flash.ApplicationInfo;
 import com.jpexs.decompiler.flash.SWF;
 import com.jpexs.decompiler.flash.helpers.InternalClass;
 import com.jpexs.decompiler.flash.helpers.LazyObject;
+import com.jpexs.decompiler.flash.tags.ProtectTag;
 import com.jpexs.decompiler.flash.tags.Tag;
 import com.jpexs.decompiler.flash.tags.UnknownTag;
 import com.jpexs.decompiler.flash.types.annotations.Internal;
@@ -29,16 +30,18 @@ import com.jpexs.helpers.Helper;
 import com.jpexs.helpers.ReflectionTools;
 import com.jpexs.helpers.XmlPrettyFormat;
 import com.jpexs.helpers.utf8.Utf8OutputStreamWriter;
+
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,13 +51,6 @@ import java.util.logging.Logger;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import javax.xml.transform.Source;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
-
-import java.io.OutputStreamWriter;
-import java.io.StringReader;
-import java.io.StringWriter;
 
 /**
  *
@@ -70,7 +66,7 @@ public class SwfXmlExporter {
     private final Map<Class, List<Field>> cachedFields = new HashMap<>();
 
     public List<File> exportXml(SWF swf, File outFile) throws IOException {
-        try {
+         try {
             File tmp = File.createTempFile("FFDEC", "XML");
 
             try (Writer writer = new Utf8OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(tmp)))) {
@@ -215,7 +211,7 @@ public class SwfXmlExporter {
             }
             
             writer.writeAttribute("type", clazz.getSimpleName());
-            
+
             if (obj instanceof Tag) {
                 if (((Tag) obj).forceWriteAsLong) {
                     writer.writeAttribute("forceWriteAsLong", "true");
@@ -231,9 +227,18 @@ public class SwfXmlExporter {
 
             for (Field f : fields) {
                 //Multiline multilineA = f.getAnnotation(Multiline.class);
-
+                String fieldName = f.getName();
                 try {
                     f.setAccessible(true);
+                    Object object = f.get(obj);
+                    if (obj instanceof ProtectTag) {
+                        if (fieldName.equals("reserved") && (int) object == 0) {
+                            continue;
+                        }
+                        if (fieldName.equals("passwordHash") && object.equals("")) {
+                            continue;
+                        }
+                    }
                     generateXml(writer, f.getName(), f.get(obj), false);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
                     logger.log(Level.SEVERE, null, ex);
