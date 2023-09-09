@@ -304,6 +304,7 @@ import javax.swing.plaf.basic.BasicTreeUI;
 import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
+import javax.xml.stream.XMLStreamException;
 import jsyntaxpane.DefaultSyntaxKit;
 
 /**
@@ -3709,7 +3710,7 @@ public final class MainPanel extends JPanel implements TreeSelectionListener, Se
 
                 try {
                     File outFile = new File(selFile + File.separator + Helper.makeFileName("swf.xml"));
-                    new SwfXmlExporter().exportXml(swf, outFile);
+                    new SwfXmlExporter().exportXml(swf, new FileOutputStream(outFile));
                     Main.stopWork();
                 } catch (IOException ex) {
                     logger.log(Level.SEVERE, null, ex);
@@ -3751,6 +3752,8 @@ public final class MainPanel extends JPanel implements TreeSelectionListener, Se
                 try {
                     try (FileInputStream fis = new FileInputStream(selfile)) {
                         new SwfXmlImporter().importSwf(swf, fis);
+                    } catch (XMLStreamException ex) {
+                        logger.log(Level.SEVERE, null, ex);
                     }
                     swf.clearAllCache();
                     swf.assignExportNamesToSymbols();

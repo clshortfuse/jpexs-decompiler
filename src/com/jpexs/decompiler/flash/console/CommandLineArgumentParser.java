@@ -2747,14 +2747,31 @@ public class CommandLineArgumentParser {
     }
 
     private static void parseSwf2Xml(Stack<String> args, String charset) {
-        if (args.size() < 2) {
+        if (args.size() < 1) {
             badArguments("swf2xml");
         }
 
         try {
             try (StdInAwareFileInputStream is = new StdInAwareFileInputStream(args.pop())) {
                 SWF swf = new SWF(is, Configuration.parallelSpeedUp.get(), charset);
-                new SwfXmlExporter().exportXml(swf, new File(args.pop()));
+                OutputStream outStream;
+                String out = null;
+                if (!args.isEmpty()) {   
+                    out = args.pop();
+                }
+                if (out == null) {
+                    outStream = System.out;
+                } else {
+                    outStream = new FileOutputStream(out);
+                }
+                try {
+                    new SwfXmlExporter().exportXml(swf, outStream);
+                } catch (UnsupportedEncodingException | FileNotFoundException ex) {
+                    Logger.getLogger(CommandLineArgumentParser.class.getName()).log(Level.SEVERE, ex.getLocalizedMessage());
+                    System.exit(1);
+                    return;
+                }
+                
             } catch (FileNotFoundException ex) {
                 System.err.println("File not found.");
                 System.exit(1);

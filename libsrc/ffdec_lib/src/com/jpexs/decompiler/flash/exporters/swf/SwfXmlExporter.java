@@ -33,7 +33,6 @@ import com.jpexs.helpers.utf8.Utf8OutputStreamWriter;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -65,11 +64,10 @@ public class SwfXmlExporter {
 
     private final Map<Class, List<Field>> cachedFields = new HashMap<>();
 
-    public List<File> exportXml(SWF swf, File outFile) throws IOException {
-         try {
-            File tmp = File.createTempFile("FFDEC", "XML");
+    public void exportXml(SWF swf, OutputStream outStream) throws IOException {
+        try {
 
-            try (Writer writer = new Utf8OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(tmp)))) {
+            try (Writer writer = new Utf8OutputStreamWriter(new BufferedOutputStream(tmp))) {
                 XMLStreamWriter xmlWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(writer);
 
                 xmlWriter.writeStartDocument();
@@ -89,10 +87,6 @@ public class SwfXmlExporter {
         } catch (Exception ex) {
             logger.log(Level.SEVERE, null, ex);
         }
-
-        List<File> ret = new ArrayList<>();
-        ret.add(outFile);
-        return ret;
     }
 
     public void exportXml(SWF swf, XMLStreamWriter writer) throws IOException, XMLStreamException {

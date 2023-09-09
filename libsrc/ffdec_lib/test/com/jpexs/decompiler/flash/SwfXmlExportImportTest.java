@@ -27,6 +27,7 @@ import com.jpexs.helpers.Helper;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -94,7 +95,7 @@ public class SwfXmlExportImportTest extends FileTestBase {
             fdir.mkdirs();
 
             File outFile = new File(fdir + File.separator + Helper.makeFileName("swf.xml"));
-            new SwfXmlExporter().exportXml(swf, outFile);
+            new SwfXmlExporter().exportXml(swf, new FileOutputStream(outFile));
 
             SWF swf2 = new SWF();
             try ( FileInputStream fis = new FileInputStream(outFile)) {
