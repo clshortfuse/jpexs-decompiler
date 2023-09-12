@@ -95,7 +95,7 @@ public class SwfXmlExportImportTest extends FileTestBase {
             fdir.mkdirs();
 
             File outFile = new File(fdir + File.separator + Helper.makeFileName("swf.xml"));
-            new SwfXmlExporter().exportXml(swf, new FileOutputStream(outFile));
+            new SwfXmlExporter().exportXml(swf, outFile);
 
             SWF swf2 = new SWF();
             try ( FileInputStream fis = new FileInputStream(outFile)) {

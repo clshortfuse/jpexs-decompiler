@@ -33,6 +33,7 @@ import com.jpexs.helpers.utf8.Utf8OutputStreamWriter;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -67,26 +68,28 @@ public class SwfXmlExporter {
     public void exportXml(SWF swf, OutputStream outStream) throws IOException {
         try {
 
-            try (Writer writer = new Utf8OutputStreamWriter(new BufferedOutputStream(tmp))) {
-                XMLStreamWriter xmlWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(writer);
+            Writer writer = new Utf8OutputStreamWriter(outStream); 
+            XMLStreamWriter xmlWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(writer);
 
-                xmlWriter.writeStartDocument();
-                xmlWriter.writeComment("\r\nWARNING: The structure of this XML is not final.\r\nIn later versions of FFDec it can be changed.\r\nMake sure you use compatible reader/writer based on _xmlExportMajor/_xmlExportMinor keys.\r\n");
-                
-                exportXml(swf, xmlWriter);
+            xmlWriter.writeStartDocument();
+            xmlWriter.writeComment("\r\nWARNING: The structure of this XML is not final.\r\nIn later versions of FFDec it can be changed.\r\nMake sure you use compatible reader/writer based on _xmlExportMajor/_xmlExportMinor keys.\r\n");
+            
+            exportXml(swf, xmlWriter);
 
-                xmlWriter.writeEndDocument();
-                xmlWriter.flush();
-                xmlWriter.close();
-            }
-
-            if (!new XmlPrettyFormat().prettyFormat(tmp, outFile, 2, true)) {
-                logger.log(Level.SEVERE, "Cannot prettyformat XML");
-            }
-            tmp.delete();
+            xmlWriter.writeEndDocument();
+            xmlWriter.flush();
+            xmlWriter.close();
         } catch (Exception ex) {
             logger.log(Level.SEVERE, null, ex);
         }
+    }
+    
+    public List<File> exportXml(SWF swf, File outFile) throws IOException {
+        exportXml(swf, new FileOutputStream(outFile));
+
+        List<File> ret = new ArrayList<>();
+        ret.add(outFile);
+        return ret;
     }
 
     public void exportXml(SWF swf, XMLStreamWriter writer) throws IOException, XMLStreamException {
@@ -206,12 +209,6 @@ public class SwfXmlExporter {
             
             writer.writeAttribute("type", clazz.getSimpleName());
 
-            if (obj instanceof Tag) {
-                if (((Tag) obj).forceWriteAsLong) {
-                    writer.writeAttribute("forceWriteAsLong", "true");
-                }
-            }
-
             if (obj instanceof UnknownTag) {
                 writer.writeAttribute("tagId", String.valueOf(((Tag) obj).getId()));
             }
@@ -233,7 +230,7 @@ public class SwfXmlExporter {
                             continue;
                         }
                     }
-                    generateXml(writer, f.getName(), f.get(obj), false);
+                    generateXml(writer, fieldName, object, false);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
                     logger.log(Level.SEVERE, null, ex);
                 }

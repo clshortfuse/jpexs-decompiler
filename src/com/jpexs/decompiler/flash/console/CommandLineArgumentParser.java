@@ -2797,7 +2797,8 @@ public class CommandLineArgumentParser {
                 swf.saveTo(fos);
             }
         } catch (Exception ex) {
-            logger.log(Level.SEVERE, null, ex);
+            System.err.println("Error: " + ex.getMessage());
+            System.exit(1);
         }
 
     }

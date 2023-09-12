@@ -3710,7 +3710,7 @@ public final class MainPanel extends JPanel implements TreeSelectionListener, Se
 
                 try {
                     File outFile = new File(selFile + File.separator + Helper.makeFileName("swf.xml"));
-                    new SwfXmlExporter().exportXml(swf, new FileOutputStream(outFile));
+                    new SwfXmlExporter().exportXml(swf, outFile);
                     Main.stopWork();
                 } catch (IOException ex) {
                     logger.log(Level.SEVERE, null, ex);
@@ -3750,16 +3750,13 @@ public final class MainPanel extends JPanel implements TreeSelectionListener, Se
             if (selectedFile != null) {
                 File selfile = Helper.fixDialogFile(selectedFile);
                 try {
-                    try (FileInputStream fis = new FileInputStream(selfile)) {
-                        new SwfXmlImporter().importSwf(swf, fis);
-                    } catch (XMLStreamException ex) {
-                        logger.log(Level.SEVERE, null, ex);
-                    }
+                    FileInputStream fis = new FileInputStream(selfile);
+                    new SwfXmlImporter().importSwf(swf, fis);
                     swf.clearAllCache();
                     swf.assignExportNamesToSymbols();
                     swf.assignClassesToSymbols();
                     refreshTree(swf);
-                } catch (IOException ex) {
+                } catch (Exception ex) {
                     logger.log(Level.SEVERE, null, ex);
                 }
             }
